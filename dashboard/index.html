@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Token Radar v3 — pre-token protocols priced by a fitted size curve, every farm plan netted to a verdict</title>
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<header class="masthead">
+  <div class="brand">
+    <h1>TOKEN RADAR <span class="ver">v3</span></h1>
+    <p class="tagline"><span data-fill="board_rows">—</span> protocols that record no token, priced by a size curve and family offsets fitted on the snapshot's <span data-fill="fit_n">—</span> traded protocols; median leave-one-out miss ×<span data-fill="loo_final">—</span> against ×<span data-fill="loo_flat">—</span> for the flat 0.25× rule. Every farm plan is costed to a net, a net per hour and a break-even share.</p>
+  </div>
+  <div class="snapshot-note">
+    <div>Snapshot: <strong data-fill="as_of">—</strong></div>
+    <div class="src" data-fill="source">—</div>
+    <div><span data-fill="protocols">—</span> protocols · watchlist floor $<span data-fill="floor">—</span></div>
+  </div>
+</header>
+
+<section class="evidence" aria-label="Model evidence">
+  <article class="ev-panel">
+    <h2>The fitted model</h2>
+    <p class="eq">log<sub>10</sub> V = <span data-fill="curve_a">—</span> + <span data-fill="curve_b">—</span> · log<sub>10</sub> TVL <span id="eq-terms"></span></p>
+    <p class="ev-note">Least squares on the <span data-fill="fit_n">—</span> traded protocols. Value grows slower than TVL — the slope is <span data-fill="curve_b">—</span>, not 1 — so the curve compresses the giants a flat multiple overprices. Family offsets (each category's median curve residual, shrunk toward its parent family) then price <span data-fill="family_rows">—</span> of <span data-fill="board_rows">—</span> rows; the rest price on the curve itself. The shaded band is the out-of-fold P25–P75 residual spread, ×<span data-fill="band_lo_f">—</span> to ×<span data-fill="band_hi_f">—</span>, and it is printed beside every row's implied value.</p>
+  </article>
+  <article class="ev-panel">
+    <h2>Traded tokens set the curve</h2>
+    <div id="scatter" role="img" aria-label="Scatter of traded protocols, market cap against TVL in log space, with the fitted size curve and its P25 to P75 band"></div>
+    <p class="ev-note">Each dot is a traded protocol in the snapshot. The line is the fitted curve; pre-token protocols are priced on it, plus their family offset where one is fitted.</p>
+  </article>
+  <article class="ev-panel">
+    <h2>The gate's ladder</h2>
+    <div id="ladder-cover"></div>
+    <p class="ev-note">Leave-one-out over all <span data-fill="fit_n">—</span> traded tokens; a term ships only if it lowers the median factor miss. Walk-forward (fit the oldest 60% by listing date, score the newest 40%) is the second read, printed in the method view.</p>
+  </article>
+</section>
+
+<section class="kpis" aria-label="Headline figures">
+  <div class="kpi hero">
+    <div class="kpi-label">Watchlist covered</div>
+    <div class="kpi-value"><span data-fill="watch_covered">—</span><span class="kpi-dim"> / </span><span data-fill="watch_total">—</span></div>
+    <div class="kpi-sub">every watchlist protocol is on the board</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Protocols ranked</div>
+    <div class="kpi-value" data-fill="board_rows">—</div>
+    <div class="kpi-sub"><span data-fill="self_found">—</span> found beyond the watchlist</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Set aside by rule</div>
+    <div class="kpi-value" data-fill="set_aside">—</div>
+    <div class="kpi-sub">products of tokens that already trade — bridges, staking wrappers, exchange lines</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Model miss, leave-one-out</div>
+    <div class="kpi-value">×<span data-fill="loo_final">—</span><span class="kpi-dim"> median</span></div>
+    <div class="kpi-sub">flat 0.25× baseline: ×<span data-fill="loo_flat">—</span> · n=<span data-fill="fit_n">—</span> traded</div>
+  </div>
+</section>
+
+<nav class="tabs" aria-label="Views">
+  <button class="tab active" data-view="board" type="button">The board</button>
+  <button class="tab" data-view="live" type="button">Already trading</button>
+  <button class="tab" data-view="method" type="button">How it works</button>
+</nav>
+
+<section id="view-board" class="view">
+  <div class="controls">
+    <input id="q" type="search" placeholder="Search name or slug…" aria-label="Search protocols">
+    <select id="f-category" aria-label="Filter by category"><option value="">All categories</option></select>
+    <select id="f-chain" aria-label="Filter by chain"><option value="">All chains</option></select>
+    <select id="f-verdict" aria-label="Filter by plan verdict">
+      <option value="">All verdicts</option>
+      <option value="FARM">Farm</option>
+      <option value="THIN">Thin</option>
+      <option value="SKIP">Skip</option>
+    </select>
+    <label class="check"><input id="f-watch" type="checkbox"> Watchlist only</label>
+    <span class="count" id="row-count"></span>
+  </div>
+  <div class="table-wrap">
+    <table id="board-table">
+      <thead>
+        <tr>
+          <th data-sort="rank" class="num">Rank</th>
+          <th data-sort="name">Protocol</th>
+          <th data-sort="category">Category</th>
+          <th>Chains</th>
+          <th data-sort="tvl_usd" class="num">TVL</th>
+          <th data-sort="change_7d" class="num">7d TVL</th>
+          <th data-sort="implied_value_usd" class="num">Implied value · P25–P75</th>
+          <th>Basis</th>
+          <th data-sort="plan_cost" class="num">Plan cost</th>
+          <th data-sort="plan_net" class="num">Net, Scenario S</th>
+          <th data-sort="plan_nph" class="num">Net / hour</th>
+          <th data-sort="plan_net">Verdict</th>
+        </tr>
+      </thead>
+      <tbody id="board-body"></tbody>
+    </table>
+  </div>
+  <p class="hint">Click a row for the protocol's arithmetic, its plan economics and its farm plan. Click a column heading to sort. The basis column names the level that priced the row: a family fit (the category's own offset, from the stated number of traded peers) or the size curve itself, where the family has fewer than 3 traded peers to fit an offset from.</p>
+
+  <h2 class="section-title">Family offsets</h2>
+  <p class="section-sub">Each traded category's median residual from the size curve, shrunk toward its parent family's offset with weight n/(n+8). An offset above ×1 lifts the family's prices off the curve; below ×1 lowers them. Families with fewer than 3 traded peers carry no offset — their rows price on the curve.</p>
+  <div id="fam-table"></div>
+</section>
+
+<section id="view-live" class="view hidden">
+  <p class="takeaway">The evidence, not the ranking: these protocols already trade, so the board never ranks them — their market caps are what the curve and offsets are fitted from.</p>
+  <p class="section-sub">The tokenized side of the snapshot, kept apart from the board: the top <span data-fill="live_shown">—</span> of <span data-fill="live_total">—</span> by market cap. The fit itself runs on all <span data-fill="fit_n">—</span> traded protocols with a positive cap and TVL.</p>
+  <div class="table-wrap">
+    <table id="live-table">
+      <thead><tr><th>Protocol</th><th>Symbol</th><th>Category</th><th class="num">TVL</th><th class="num">Market cap</th><th class="num">Multiple</th><th class="num">7d TVL</th></tr></thead>
+      <tbody id="live-body"></tbody>
+    </table>
+  </div>
+</section>
+
+<section id="view-method" class="view hidden">
+  <div class="method-grid">
+    <article class="panel">
+      <h2>The value model</h2>
+      <p class="takeaway">A size curve through the traded set, family offsets on top of it, and nothing else the gate did not pass.</p>
+      <p>For every traded protocol the snapshot records a market cap and a TVL. <code>fitStaged</code> (lib/model.ts) first fits the size curve by least squares in log space: log<sub>10</sub> value = <span data-fill="curve_a">—</span> + <span data-fill="curve_b">—</span> · log<sub>10</sub> TVL over the <span data-fill="fit_n">—</span> traded protocols with a positive cap and TVL. A slope under 1 is the snapshot's own statement that value grows slower than TVL; it is also what reorders the board's top, where a flat multiple simply sorts by TVL. Each category's <strong>family offset</strong> is then the median of its members' curve residuals, shrunk toward its <strong>parent family's</strong> offset with weight n/(n+8); the parent offset is the pooled median residual of the parent's categories, shrunk toward the curve with weight n/(n+6). A family with fewer than 3 traded members gets no offset, and its protocols price on the curve — the row's basis column says so. No protocol name is hardcoded anywhere in the fit.</p>
+      <p id="gate-outcome"></p>
+      <p>Tokenized and pre-token protocols are never mixed — the board holds only protocols that record no token (market cap, gecko id and symbol all null), and it draws the same product-type line the watchlist definition draws: wrapped, staked or bridged products of a token that already trades are not launches waiting to happen, so bridge, liquid-staking and restaking product categories, exchange-fronted names and version-suffixed names sit aside (<span data-fill="set_aside">—</span> protocols, counted in Data quality). The board applies that line without the watchlist's $50M floor — the floor is a size line, the product-type line is a kind line, and only the kind line is kept.</p>
+    </article>
+    <article class="panel">
+      <h2>The validation gate</h2>
+      <p class="takeaway">Every candidate term was scored by leave-one-out over all <span data-fill="fit_n">—</span> traded tokens; the ladder below is the whole of the evidence, kept and rejected alike.</p>
+      <p><code>looGate</code> refits the entire pipeline — curve, offsets, tilts — 128 times, each time leaving one traded protocol out and pricing it with a model that never saw it. The score is the median factor miss: the typical price is within a factor of ×<span data-fill="loo_final">—</span> of the realized cap, against ×<span data-fill="loo_flat">—</span> for the unfitted flat 0.25× baseline. A term joins the model only when its step lowers that median. The walk-forward read fits the same models on the oldest 60% of dated traded protocols (train <span data-fill="wf_train">—</span>) and scores the newest 40% (test <span data-fill="wf_test">—</span>); it was not used to select anything. Rank correlation of the out-of-fold prices against realized caps (Spearman ρ) is <span data-fill="spearman">—</span>. The per-row band on the board is the out-of-fold residual spread: P25 ×<span data-fill="band_lo_f">—</span>, P75 ×<span data-fill="band_hi_f">—</span>.</p>
+      <div id="ladder-method"></div>
+      <div id="ladder-headcuts"></div>
+      <p class="honest">Selection disclosure: the shrinkage constants (n/(n+8) toward the parent, n/(n+6) toward the curve), the 3-peer minimum and the tilt clamps were fixed as the model's design before the gate ran, and the gate's own leave-one-out is the score reported — the same instrument selected and judged. The walk-forward column is the untouched second read; where the two disagree, the ladder shows both.</p>
+    </article>
+    <article class="panel wide">
+      <h2>Calibration — predicted against realized, by decile</h2>
+      <p class="takeaway">In <span data-fill="cal_under">—</span> of 10 deciles the model's mean out-of-fold prediction lands below the mean realized cap. The log-space calibration slope is <span data-fill="cal_slope">—</span> — 1.00 would track the diagonal exactly.</p>
+      <p>The <span data-fill="fit_n">—</span> traded protocols at their out-of-fold prices, bucketed into deciles by predicted value. Means are arithmetic, so one giant realized cap bends its whole decile — that bend is itself the finding: this model's error is a tail phenomenon, not a uniform blur. A ratio under 1.00 means the model under-predicted that decile.</p>
+      <div id="cal-table"></div>
+    </article>
+    <article class="panel wide">
+      <h2>Where the error lives — decomposition</h2>
+      <p class="takeaway">Median factor miss by category and TVL band, and the worst decile of out-of-fold misses named, each with its cause under a stated rule.</p>
+      <h3 class="sub-h">Median factor miss by category (out-of-fold)</h3>
+      <div id="dec-cat"></div>
+      <h3 class="sub-h">Median factor miss by TVL band (out-of-fold)</h3>
+      <div id="dec-band"></div>
+      <h3 class="sub-h">The worst decile, named</h3>
+      <p>Cause rule, applied in order: priced on the curve because its family has fewer than 3 traded peers → <strong>thin family</strong>; TVL moved at least 25% inside the snapshot's own 7-day window → <strong>stale input</strong>; otherwise → <strong>genuine model miss</strong>.</p>
+      <div id="dec-worst"></div>
+    </article>
+    <article class="panel wide" id="model-card">
+      <h2>Model card</h2>
+      <p class="takeaway">The whole method on one card: what was fitted, on what, how it scored, where it is blunt, and what it assumes.</p>
+      <div class="arith card">
+        <div class="row"><span>Fit pool</span><b><span data-fill="fit_n">—</span> traded protocols (market cap &gt; $0 and TVL &gt; $0). Excluded: <span data-fill="zero_mcap">—</span> recording a market cap of exactly $0 and <span data-fill="dq_neg_n">—</span> recording a negative cap — both named in Data quality. A further <span data-fill="dq_partial">—</span> rows carry a symbol but no market cap (per-chain deployments of trading tokens) and enter neither the fit nor the board.</b></div>
+        <div class="row"><span>Model</span><b>log<sub>10</sub> implied value = <span data-fill="curve_a">—</span> + <span data-fill="curve_b">—</span> · log<sub>10</sub> TVL + family offset (<code>fitStaged</code> + <code>predictLog</code> in lib/model.ts). The offset is the family median curve residual shrunk toward the parent family's offset, n/(n+8); families with fewer than 3 traded peers carry no offset and price on the curve. <span data-fill="family_rows">—</span> of <span data-fill="board_rows">—</span> board rows carry a family fit.</b></div>
+        <div class="row"><span>Validation</span><b>Leave-one-out over all <span data-fill="fit_n">—</span> traded protocols: median factor miss ×<span data-fill="loo_final">—</span> (flat baseline ×<span data-fill="loo_flat">—</span>), Spearman ρ <span data-fill="spearman">—</span>. Walk-forward: train <span data-fill="wf_train">—</span> oldest by listing date, test <span data-fill="wf_test">—</span> newest. The gate's ladder — size curve, family offsets, parent level, growth tilt, age term, each scored as an addition to the kept model — is printed in full above, with the terms it rejected and their numbers.</b></div>
+        <div class="row"><span>Limits, measured</span><b>The typical out-of-fold price misses by a factor of ×<span data-fill="loo_final">—</span>, and the middle half of misses spans ×<span data-fill="band_lo_f">—</span> to ×<span data-fill="band_hi_f">—</span> — the band printed beside every row. <span data-fill="curve_rows">—</span> rows price on the curve alone because their families are thin (fewer than 3 traded peers); the largest of them sit at the board's top, so the top is curve order where families are thin and offset order where they are not. The worst decile of out-of-fold misses is named in the decomposition. The model reads TVL and category alone; it cannot see team, unlocks, revenue or audits.</b></div>
+        <div class="row"><span>Assumptions</span><b>Scenario S: a launch at the implied value, 5% of it to early users, the pool shared over an assumed farmed 25% of TVL. Plan positions are TVL-band midpoints; hours are 45 minutes of setup plus one hour per session; gas follows the printed schedule; protocol fees follow the printed formulas; market cap is used exactly as the snapshot records it (its single cap field — the file carries no separate FDV figure to confuse it with). Every scenario figure is an assumption set, never a prediction.</b></div>
+      </div>
+    </article>
+    <article class="panel wide">
+      <h2>Farm economics — how every plan is costed, and what Scenario S assumes</h2>
+      <p class="takeaway">Every plan is priced in integer cents from its own protocol's inputs and closed by a verdict; Scenario S is an assumption set, printed in full — not a forecast.</p>
+      <p>Each plan is built by <code>buildPlan</code> from the protocol's <strong>mechanism</strong> — the steps name what that mechanism actually does (supply-borrow-repay cycles for a lending loop, crossings in both directions for a bridge, epochs for an options vault, completed terms for a locker) — and priced in integer cents, so a plan's step costs sum to its stated total exactly. The plan's shape: a working position from the protocol's TVL band (bands run $50–$300 up to $2,500–$10,000; the modeled position is the band midpoint), a window of 5–10 weeks by band, two sessions a week, and modeled time of 45 minutes of setup plus one hour a session. Gas is charged per session from a stated schedule — <strong>Ethereum $4.50, Solana $0.06, BNB Chain $0.25, Tron $0.30, layer-2 chains $0.35, any other chain $0.60</strong> — split as 2 sessions of setup, 1 to open, 1 to breadth and the rest to the core cadence. Protocol fees come from the mechanism's own formula, printed in each detail view: borrow interest at a modeled 6% APR on a 55% loan-to-value loop for lending, taker fees at 0.05% on 3× notional for perps, premiums at 2% of position per weekly roll for options, relayer fees at 0.1% of the amount crossed plus $0.75 a crossing for bridges, and so on. Mechanisms whose honest cost is gas alone — vault deposits, staking, governance — are charged gas alone; the model does not invent fees to look thorough.</p>
+      <p><strong>Scenario S</strong> is the reward side, and it is an assumption set, not a forecast: the protocol launches a token at exactly this model's implied value; <strong>5%</strong> of that value goes to early users; and the pool is shared by capital pro-rata over an assumed <strong>farmed 25% of TVL</strong> (not all TVL farms). A plan's Scenario S reward is therefore 0.05 ÷ 0.25 × its protocol's effective multiple (implied value ÷ TVL) × its modeled position — which is why two plans share economics only when their inputs genuinely coincide. Every plan prints the reward three ways: the <strong>net</strong>, the <strong>net per hour</strong> of modeled work, and the <strong>break-even share</strong> — the percentage of the Scenario S reward the plan needs to receive to cover its cost. The verdict keys on the deposit model: <em>FARM</em> when the reward covers the cost twice over (break-even at or under 50%), <em>THIN</em> when it covers the cost but by less, <em>SKIP</em> when it does not cover the cost at all. Beside Scenario S, every plan also prints the <strong>pure pro-rata bound</strong> — the same 5% pool shared over all of TVL — which is the harshest simple reading. What the costing leaves out, stated once: perps funding (it cuts both ways), LP impermanent loss, yield a position earns while it sits (supply yield, pool fees — real, and excluded, which makes these nets conservative), creator royalties, and any value of the farmer's hours beyond the hours themselves, which are printed. A protocol is only ever said to run a points programme conditionally — check its official channels; the snapshot cannot know.</p>
+    </article>
+    <article class="panel wide">
+      <h2>Data quality — the snapshot, audited</h2>
+      <p class="takeaway">The cleaning is part of the method: every exclusion below is a rule with a count, applied before any fitting — nothing was quietly dropped.</p>
+      <div id="dq-body"></div>
+    </article>
+    <article class="panel">
+      <h2>Words and limits</h2>
+      <p class="takeaway">The strongest claim this file supports is that a protocol <em>records no token</em> — everything on the board is read inside that limit.</p>
+      <p>A protocol whose three token fields are null <em>records no token</em> in this snapshot. That is the strongest statement the file supports, and it is the phrase used throughout — the snapshot cannot prove a token does not exist, only that DefiLlama records none. The snapshot is frozen at <span data-fill="as_of2">—</span>; nothing here is live data. Implied values inherit every limit of the fitted model: the out-of-fold factor band printed beside each row is the honest size of that blindness, and Scenario S inherits the same error twice over, since its reward is proportional to the implied value — treat every net on this board as a planning figure with a wide interval around it, not as a quote.</p>
+    </article>
+  </div>
+</section>
+
+<aside id="detail" class="detail hidden" aria-label="Protocol detail">
+  <button id="detail-close" type="button" aria-label="Close detail">×</button>
+  <div id="detail-content"></div>
+</aside>
+
+<footer>
+  <p>Built from the sealed snapshot only — no network, no live prices. Source: <span data-fill="source2">—</span>. The model, its gate, its plan costing and Scenario S are described under “How it works”.</p>
+</footer>
+
+<script src="../data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
